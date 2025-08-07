@@ -1,0 +1,129 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    istio-injection: enabled
+  name: demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-rest-app
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-rest-app
+  template:
+    metadata:
+      labels:
+        app: demo-rest-app
+    spec:
+      containers:
+        - name: demo-rest-app
+          image: demo_rest_app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: ERLANG_COOKIE
+              value: "secret"
+            - name: RELEASE_COOKIE
+              value: "secret"
+            - name: RELEASE_DISTRIBUTION
+              value: "name"
+            - name: RELEASE_NODE
+              value: demo_rest_app@$(POD_IP)
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-rest-app
+  namespace: demo
+  labels:
+    app: demo-rest-app
+spec:
+  selector:
+    app: demo-rest-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 4000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-rest-app-headless
+  namespace: demo
+spec:
+  ports:
+    - port: 4369
+      targetPort: 4369
+      protocol: TCP
+      name: epmd-tcp
+  selector:
+    app: demo-rest-app
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: demo-rest-app-gateway
+  namespace: demo
+spec:
+  selector:
+    istio: ingressgateway  # Use Istio's default ingress gateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - demorestapp.example.com
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: demo-rest-app-epmd
+  namespace: demo
+spec:
+  hosts:
+    - demo-rest-app-headless
+  tcp:
+    - match:
+        - port: 4369
+      route:
+        - destination:
+            host: demo-rest-app-headless
+            port:
+              number: 4369
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: demo-rest-app
+  namespace: demo
+spec:
+  hosts:
+    - demorestapp.example.com
+  gateways:
+    - demo-rest-app-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: demo-rest-app
+            port:
+              number: 80
