@@ -115,23 +115,9 @@ Se carga la configuracion del cluster en el archivo `lib/demo_rest_app/applicati
 
 ### Broadcast del borrado
 
-Para propagar el borrado a todos los nodos del cluster, se usa el metodo `:rpc.call/4` de erlang. El cual es una operacion
-sincrona.
+Como esta implementacion usa Nebulex, no se requiere una propagacion manual de los cambios en el cache.
 
-```elixir
-  def delete_key_all_nodes(key) do
-    # Local delete
-    Cachex.del(:my_cache, key)
-
-    # Remote deletes
-    Node.list()
-    |> Enum.each(fn node ->
-      :rpc.call(node, Cachex, :del, [:my_cache, key])
-    end)
-  end
-```
-
-Alternativamente se puede usar el metodo `:rpc.cast/4` para hacer el borrado en todos los nodos de manera asíncrona:
+Simplemente se llama el metodo `del/1` y por debajo nebulex sincroniza los nodos.
 
 ### Validacion del borrado
 
@@ -151,8 +137,8 @@ Erlang/OTP 26 [erts-14.2.5.10] [source] [64-bit] [smp:6:6] [ds:6:6:10] [async-th
 
 Interactive Elixir (1.16.3) - press Ctrl+C to exit (type h() ENTER for help)
 
-iex(demo_rest_app@10.42.0.30)1> Cachex.keys(:my_cache)
-{:ok, ["Gabo"]}
+iex(demo_rest_app@10.42.0.30)1> DemoRestApp.Cache.all()
+["Gabo"]
 ```
 
 Despues de invocar el endpoint `/bye/Gabo`, se elimina el key "Gabo" del cache del nodo que reciba la peticion
@@ -169,6 +155,6 @@ Erlang/OTP 26 [erts-14.2.5.10] [source] [64-bit] [smp:6:6] [ds:6:6:10] [async-th
 
 Interactive Elixir (1.16.3) - press Ctrl+C to exit (type h() ENTER for help)
 
-iex(demo_rest_app@10.42.0.30)1> Cachex.keys(:my_cache)
-{:ok, []}
+iex(demo_rest_app@10.42.0.30)1> DemoRestApp.Cache.all()
+[]
 ```
