@@ -2,7 +2,7 @@ defmodule DemoRestApp.Router do
   @moduledoc false
   use Plug.Router
 
-  alias DemoRestApp.CacheBroadcaster
+  alias DemoRestApp.Cache
 
   plug :match
   plug :dispatch
@@ -18,13 +18,13 @@ defmodule DemoRestApp.Router do
   """
   get "/hello/:name" do
     # check if the name provided in the URL is already in the cache
-    case Cachex.exists?(:my_cache, "#{name}") do
-      {:ok, true} ->
+    case Cache.has_key?("#{name}") do
+      true ->
         # User has visited before
         send_resp(conn, 200, "Hello again, #{name}!")
-      { :ok, false } ->
+      _ ->
         # User is new, store their name in the cache
-        Cachex.put(:my_cache, "#{name}", true)
+        Cache.put("#{name}", true)
         send_resp(conn, 200, "Hello, #{name}! This is your first visit.")
     end
   end
@@ -36,10 +36,10 @@ defmodule DemoRestApp.Router do
   """
   delete "/bye/:name" do
     # check if the name provided in the URL exists in the cache
-    case Cachex.exists?(:my_cache, "#{name}") do
-      {:ok, true} ->
+    case Cache.has_key?("#{name}") do
+      true ->
         # User exists, delete their name from the cache, broadcast the deletion
-        CacheBroadcaster.delete_key_all_nodes("#{name}")
+        Cache.delete("#{name}")
         send_resp(conn, 200, "bye #{name}!")
       _ ->
         send_resp(conn, 200, "#{name}? I dont know you!")

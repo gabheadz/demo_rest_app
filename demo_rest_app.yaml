@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: demo-rest-app
-          image: demo_rest_app:latest
+          image: demo_rest_app_nebulex:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000
